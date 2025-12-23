@@ -2,66 +2,33 @@ pipeline {
     agent any
 
     tools {
-        maven 'maven3'
-        jdk 'java17'
+        jdk 'JAVA'
+        maven 'MAVEN'
     }
 
     environment {
-        DOCKER_IMAGE = "yourdockerhub/petclinic:latest"
+        IMAGE_NAME = "suspicious08/petclinic"
     }
 
     stages {
-
-        stage('Checkout Code') {
+        stage('Build WAR') {
             steps {
-                git 'https://github.com/Suspicious-lab/Petclinicneww.git'
+                sh 'mvn clean package'
             }
         }
 
-        stage('Build & Test') {
+        stage('Docker Build & Push') {
             steps {
-                sh 'mvn clean test'
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh 'mvn sonar:sonar'
+                withDockerRegistry(
+                  credentialsId: 'dockerhub-creds',
+                  url: 'https://index.docker.io/v1/'
+                ) {
+                    sh '''
+                    docker build -t $IMAGE_NAME:latest .
+                    docker push $IMAGE_NAME:latest
+                    '''
                 }
             }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                sh 'docker build -t $DOCKER_IMAGE .'
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                withDockerRegistry([credentialsId: 'dockerhub-creds', url: '']) {
-                    sh 'docker push $DOCKER_IMAGE'
-                }
-            }
-        }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                sh '''
-                kubectl apply -f k8s/deployment.yaml
-                kubectl apply -f k8s/service.yaml
-                '''
-            }
-        }
-    }
-
-    post {
-        success {
-            slackSend message: "✅ Petclinic deployed successfully!"
-        }
-        failure {
-            slackSend message: "❌ Petclinic pipeline failed!"
         }
     }
 }
