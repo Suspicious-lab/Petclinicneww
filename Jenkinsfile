@@ -20,7 +20,7 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 withDockerRegistry(
-                  credentialsId: 'dockerhub-creds',
+                  credentialsId: 'docker_creds',
                   url: 'https://index.docker.io/v1/'
                 ) {
                     sh '''
